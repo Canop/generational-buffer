@@ -1,6 +1,5 @@
 use std::{
     fmt,
-    hash::Hash,
     marker::PhantomData,
 };
 
@@ -8,7 +7,7 @@ use std::{
 ///
 /// The handle is typed according to the type of data it refers to,
 /// but doesn't hold it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct Handle<T> {
     index: usize,
     generation: u32,
@@ -183,6 +182,18 @@ impl<T: fmt::Debug> fmt::Debug for GenerationalBuffer<T> {
             .finish()
     }
 }
+impl<O> PartialEq for Handle<O> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.generation == other.generation
+    }
+}
+impl<O> Eq for Handle<O> {}
+impl<O> Clone for Handle<O> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<O> Copy for Handle<O> {}
 
 #[cfg(test)]
 mod tests {
