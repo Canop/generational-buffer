@@ -28,6 +28,9 @@ impl<T> Handle<T> {
 ///
 /// Inserting returns a `Handle` that can be used to access the value later,
 /// checking the item hasn't been replaced in the meantime.
+///
+/// Items can't be individually removed, but the entire buffer can be cleared,
+///  which invalidates all existing handles.
 pub struct GenerationalBuffer<T> {
     entries: Vec<T>,
     max_capacity: usize,
@@ -59,6 +62,14 @@ impl<T> GenerationalBuffer<T> {
     /// Returns true if the buffer is empty
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Clear the buffer, removing all entries and rendering all
+    /// existing handles invalid.
+    pub fn clear(&mut self) {
+        self.entries.clear();
+        self.next_index = 0;
+        self.current_generation += 2;
     }
 
     /// Returns true if the buffer has reached its maximum capacity
@@ -97,34 +108,18 @@ impl<T> GenerationalBuffer<T> {
 
     /// Gets a reference to the value associated with the handle
     pub fn get(&self, handle: Handle<T>) -> Option<&T> {
-        if handle.index >= self.entries.len() {
-            return None;
-        }
-
-        // Calculate the generation that should be at this index
-        let expected_generation = self.calculate_generation_at_index(handle.index);
-
-        // Check if the generation matches
-        if handle.generation == expected_generation {
+        if self.is_valid(handle) {
             Some(&self.entries[handle.index])
-        } else {
+        } else  {
             None
         }
     }
 
     /// Gets a mutable reference to the value associated with the handle
     pub fn get_mut(&mut self, handle: Handle<T>) -> Option<&mut T> {
-        if handle.index >= self.entries.len() {
-            return None;
-        }
-
-        // Calculate the generation that should be at this index
-        let expected_generation = self.calculate_generation_at_index(handle.index);
-
-        // Check if the generation matches
-        if handle.generation == expected_generation {
+        if self.is_valid(handle) {
             Some(&mut self.entries[handle.index])
-        } else {
+        } else  {
             None
         }
     }
@@ -134,9 +129,7 @@ impl<T> GenerationalBuffer<T> {
         if handle.index >= self.entries.len() {
             return false;
         }
-
-        let expected_generation = self.calculate_generation_at_index(handle.index);
-        handle.generation == expected_generation
+        handle.generation == self.calculate_generation_at_index(handle.index)
     }
 
     /// Returns an iterator over all entries with their handles,
@@ -236,13 +229,20 @@ mod tests {
         assert!(buffer.is_valid(h3));
         assert_eq!(buffer.len(), 2);
 
-        // let's do one more turn
+        // Do one more turn
         let h4 = buffer.push(40); // This should overwrite h2
         let h5 = buffer.push(50); // This should overwrite h3
         assert_eq!(buffer.get(h4), Some(&40));
         assert_eq!(buffer.get(h5), Some(&50));
         assert!(!buffer.is_valid(h2)); // h2 should be invalid now
         assert!(!buffer.is_valid(h3)); // h3 should be invalid now
+
+        // Clear the buffer
+        buffer.clear();
+        assert!(buffer.is_empty());
+        assert!(!buffer.is_valid(h4)); // h4 should be invalid now
+        let h6 = buffer.push(60); // New handle after clear
+        assert_eq!(buffer.get(h6), Some(&60));
     }
 
     #[test]
