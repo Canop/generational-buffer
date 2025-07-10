@@ -4,7 +4,10 @@ use std::{
     marker::PhantomData,
 };
 
-/// A handle that combines an index with a generation counter
+/// A handle that combines an index with a generation counter.
+///
+/// The handle is typed according to the type of data it refers to,
+/// but doesn't hold it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Handle<T> {
     index: usize,
@@ -34,7 +37,7 @@ pub struct GenerationalBuffer<T> {
 }
 
 impl<T> GenerationalBuffer<T> {
-    /// Creates a new generational buffer with the specified maximum capacity
+    /// Creates a new generational buffer with the specified capacity
     pub fn new(max_capacity: usize) -> Self {
         Self {
             entries: Vec::new(),
@@ -64,7 +67,9 @@ impl<T> GenerationalBuffer<T> {
         self.entries.len() == self.max_capacity
     }
 
-    /// Inserts a value into the buffer and returns a handle to it
+    /// Inserts a value into the buffer and returns a handle to it.
+    ///
+    /// This removes the oldest entry if the buffer is full.
     pub fn push(&mut self, value: T) -> Handle<T> {
         let index = self.next_index;
         let generation = self.current_generation;
@@ -144,7 +149,7 @@ impl<T> GenerationalBuffer<T> {
         })
     }
 
-    /// Returns an iterator over all entries
+    /// Returns an iterator over all entries, in no particular order
     pub fn values(&self) -> impl Iterator<Item = &T> {
         self.entries.iter()
     }
@@ -155,13 +160,6 @@ impl<T> GenerationalBuffer<T> {
             let generation = self.calculate_generation_at_index(i);
             Handle::new(i, generation)
         })
-    }
-
-    /// Clears all entries in the buffer
-    pub fn clear(&mut self) {
-        self.entries.clear();
-        self.next_index = 0;
-        self.current_generation = 0;
     }
 
     /// Calculate what generation should be at a given index
@@ -185,7 +183,6 @@ impl<T: fmt::Debug> fmt::Debug for GenerationalBuffer<T> {
             .finish()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
