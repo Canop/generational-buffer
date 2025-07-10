@@ -1,0 +1,13 @@
+[package]
+name = "generational-buffer"
+version = "1.0.0"
+edition = "2021"
+authors = ["dystroy <denys.seguret@gmail.com>"]
+repository = "https://github.com/Canop/generational-buffer"
+description = "Generational Ring Buffer"
+keywords = ["generation", "ring", "circular", "buffer"]
+categories = ["memory-management", "rust-patterns", "data-structures"]
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
