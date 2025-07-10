@@ -1,15 +1,24 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::Hash,
+    marker::PhantomData,
+};
 
 /// A handle that combines an index with a generation counter
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Handle {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Handle<T> {
     index: usize,
     generation: u32,
+    phantom: PhantomData<T>,
 }
 
-impl Handle {
+impl<T> Handle<T> {
     fn new(index: usize, generation: u32) -> Self {
-        Self { index, generation }
+        Self {
+            index,
+            generation,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -56,7 +65,7 @@ impl<T> GenerationalBuffer<T> {
     }
 
     /// Inserts a value into the buffer and returns a handle to it
-    pub fn push(&mut self, value: T) -> Handle {
+    pub fn push(&mut self, value: T) -> Handle<T> {
         let index = self.next_index;
         let generation = self.current_generation;
 
@@ -83,7 +92,7 @@ impl<T> GenerationalBuffer<T> {
     }
 
     /// Gets a reference to the value associated with the handle
-    pub fn get(&self, handle: Handle) -> Option<&T> {
+    pub fn get(&self, handle: Handle<T>) -> Option<&T> {
         if handle.index >= self.entries.len() {
             return None;
         }
@@ -100,7 +109,7 @@ impl<T> GenerationalBuffer<T> {
     }
 
     /// Gets a mutable reference to the value associated with the handle
-    pub fn get_mut(&mut self, handle: Handle) -> Option<&mut T> {
+    pub fn get_mut(&mut self, handle: Handle<T>) -> Option<&mut T> {
         if handle.index >= self.entries.len() {
             return None;
         }
@@ -117,7 +126,7 @@ impl<T> GenerationalBuffer<T> {
     }
 
     /// Checks if a handle is still valid (points to existing data)
-    pub fn is_valid(&self, handle: Handle) -> bool {
+    pub fn is_valid(&self, handle: Handle<T>) -> bool {
         if handle.index >= self.entries.len() {
             return false;
         }
@@ -128,7 +137,7 @@ impl<T> GenerationalBuffer<T> {
 
     /// Returns an iterator over all entries with their handles,
     ///  in no particular order
-    pub fn iter(&self) -> impl Iterator<Item = (Handle, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Handle<T>, &T)> {
         self.entries.iter().enumerate().map(|(i, value)| {
             let generation = self.calculate_generation_at_index(i);
             (Handle::new(i, generation), value)
@@ -141,7 +150,7 @@ impl<T> GenerationalBuffer<T> {
     }
 
     /// Returns an iterator over all valid handles, in no particular order
-    pub fn handles(&self) -> impl Iterator<Item = Handle> + '_ {
+    pub fn handles(&self) -> impl Iterator<Item = Handle<T>> + '_ {
         (0..self.entries.len()).map(move |i| {
             let generation = self.calculate_generation_at_index(i);
             Handle::new(i, generation)
@@ -176,6 +185,7 @@ impl<T: fmt::Debug> fmt::Debug for GenerationalBuffer<T> {
             .finish()
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -237,9 +247,9 @@ mod tests {
         // Only the last 3 handles should be valid
         for (i, &handle) in handles.iter().enumerate() {
             if i < 7 {
-                assert!(!buffer.is_valid(handle), "Handle {} should be invalid", i);
+                assert!(!buffer.is_valid(handle), "Handle {i} should be invalid");
             } else {
-                assert!(buffer.is_valid(handle), "Handle {} should be valid", i);
+                assert!(buffer.is_valid(handle), "Handle {i} should be valid");
             }
         }
     }
