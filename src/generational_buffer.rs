@@ -40,7 +40,11 @@ pub struct GenerationalBuffer<T> {
 
 impl<T> GenerationalBuffer<T> {
     /// Creates a new generational buffer with the specified capacity
+    ///
+    /// Minimum capacity is 1.
     pub fn new(max_capacity: usize) -> Self {
+        let max_capacity = max_capacity.max(1);
+
         Self {
             entries: Vec::new(),
             max_capacity,
